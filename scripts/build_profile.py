@@ -7,6 +7,7 @@ Edit INFO / PALETTES below and re-run. Never edit the generated .svg files by ha
 Optional env: GH_PAT (includes private repos), GITHUB_TOKEN, WAKATIME_API_KEY.
 Requires: Pillow  ->  py -m pip install pillow
 """
+import dataclasses
 import datetime
 import os
 
@@ -60,7 +61,7 @@ def main(out_dir=ROOT, today=None):
         info=INFO,
         user=HANDLE,
         uptime_days=uptime_days(CODING_SINCE, today),
-        ascii_rows=portrait_ascii(PORTRAIT),
+        ascii_rows=[],
         streaks=compute_streaks(calendar, today) if calendar else None,
         github=fetch_github(USER, token, private=bool(pat)),
         wakatime=fetch_wakatime(os.environ.get("WAKATIME_API_KEY")),
@@ -71,10 +72,11 @@ def main(out_dir=ROOT, today=None):
 
     paths = []
     for theme, palette in PALETTES.items():
+        themed = dataclasses.replace(card, ascii_rows=portrait_ascii(PORTRAIT, invert=palette["invert"]))
         path = os.path.join(out_dir, f"{theme}.svg")
         with open(path, "w", encoding="utf-8", newline="\n") as f:
-            f.write(build_svg(card, palette))
-        print(f"wrote {theme}.svg  (ascii rows={len(card.ascii_rows)})")
+            f.write(build_svg(themed, palette))
+        print(f"wrote {theme}.svg  (ascii rows={len(themed.ascii_rows)})")
         paths.append(path)
     return paths
 

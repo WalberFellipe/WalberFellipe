@@ -1,5 +1,6 @@
 import datetime
 import os
+import re
 import tempfile
 import unittest
 import xml.etree.ElementTree as ET
@@ -30,6 +31,15 @@ class BuildTest(unittest.TestCase):
                 raw = f.read()
         self.assertTrue(raw.startswith(b'<?xml version="1.0" encoding="UTF-8"?>'))
         self.assertIn("Araxá".encode("utf-8"), raw)
+
+    def test_light_theme_uses_inverted_portrait(self):
+        with tempfile.TemporaryDirectory() as d,                 mock.patch("profilecard.data._get_json", side_effect=OSError):
+            build_profile.main(out_dir=d, today=TODAY)
+            art = {}
+            for theme in ("dark", "light"):
+                with open(os.path.join(d, f"{theme}.svg"), encoding="utf-8") as f:
+                    art[theme] = re.search(r'<text class="ascii".*?</text>', f.read(), re.S).group(0)
+        self.assertFalse(art["dark"] == art["light"], "light theme should use the inverted portrait")
 
 
 if __name__ == "__main__":

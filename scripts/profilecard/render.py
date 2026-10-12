@@ -10,7 +10,7 @@ W = 1180
 GAP = 12
 MONO = "'SF Mono', Menlo, Consolas, 'Liberation Mono', 'Courier New', monospace"
 ASCII_FONT = "'Courier New', Consolas, monospace"
-FS_ASCII = 7.0
+FS_ASCII = 6.6
 
 MAP_PANEL = (12, 50, 500, 470)
 INFO_PANEL = (524, 50, 644, 470)
@@ -306,7 +306,7 @@ def _defs(p):
   </linearGradient>
   <linearGradient id="scanGrad" x1="0" y1="0" x2="0" y2="1">
     <stop offset="0%" stop-color="{p['g1']}" stop-opacity="0"/>
-    <stop offset="50%" stop-color="{p['g1']}" stop-opacity="0.22"/>
+    <stop offset="50%" stop-color="{p['g1']}" stop-opacity="0.14"/>
     <stop offset="100%" stop-color="{p['g1']}" stop-opacity="0"/>
   </linearGradient>
   <filter id="glitch" x="-5%" y="-5%" width="110%" height="110%">

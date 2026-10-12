@@ -7,6 +7,7 @@ DARK = {
     "text": "#E2E8F0", "muted": "#5B6B88",
     "label": "#00E5FF", "accent": "#FF2BD6",
     "scanblend": "screen", "scanop": "0.75",
+    "invert": False,
     "heat0": "#161E33", "heat1": "#123B5C", "heat2": "#1A6E92", "heat3": "#00B8D4", "heat4": "#FF2BD6",
 }
 
@@ -17,5 +18,6 @@ LIGHT = {
     "text": "#1E293B", "muted": "#8A97AB",
     "label": "#0E7490", "accent": "#A21CAF",
     "scanblend": "multiply", "scanop": "0.55",
+    "invert": True,   # dark ink on a light page: dark pixels get the dense glyphs
     "heat0": "#E2E8F0", "heat1": "#A5F3FC", "heat2": "#22D3EE", "heat3": "#0891B2", "heat4": "#C026D3",
 }

@@ -1,4 +1,5 @@
 import datetime
+import os
 import re
 import unittest
 import xml.etree.ElementTree as ET
@@ -7,7 +8,8 @@ import tests._path  # noqa: F401
 
 from profilecard.palettes import DARK, LIGHT
 from build_profile import INFO
-from profilecard.render import INFO_PANEL, VALUE_COL, Card, build_svg
+from profilecard.portrait import ADVANCE, portrait_ascii
+from profilecard.render import FS_ASCII, INFO_PANEL, MAP_PANEL, VALUE_COL, Card, build_svg
 
 
 NOW = datetime.datetime(2026, 10, 11, 12, tzinfo=datetime.timezone.utc)
@@ -58,6 +60,12 @@ class RenderTest(unittest.TestCase):
         longest = max(VALUE_COL + len(v) for _, v in full_card().info)
         self.assertLessEqual(16 + longest * 13 * 0.60, w)
         self.assertLessEqual(len(full_card().info) * 17 + 60, h)
+
+    def test_real_portrait_fits_map_panel(self):
+        x, y, w, h = MAP_PANEL
+        rows = portrait_ascii(os.path.join(tests._path.ROOT, "assets", "portrait.png"))
+        self.assertLessEqual(len(rows) * FS_ASCII, h - 30)          # clear of the panel label
+        self.assertLessEqual(max(map(len, rows)) * FS_ASCII * ADVANCE, w - 20)
 
     def test_missing_metrics_render_dash(self):
         svg = build_svg(empty_card(), DARK)

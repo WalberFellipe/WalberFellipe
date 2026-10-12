@@ -43,8 +43,19 @@ def subject_mask(img):
     return mask.filter(ImageFilter.MedianFilter(5))
 
 
-def portrait_ascii(path, cols=100, crop=(0.06, 0.0, 0.94, 0.84), ramp=RAMP):
-    """Rows of ASCII art, right-stripped, each at most `cols` wide."""
+def _noise(x, y):
+    """Deterministic per-cell value in [0, 1) — same portrait on every rebuild."""
+    return ((x * 73856093 ^ y * 19349663) % 1000) / 1000
+
+
+def portrait_ascii(path, cols=104, crop=(0.12, 0.0, 0.88, 0.80), ramp=RAMP,
+                   sharpen=140, gamma=1.2, fade=0.25, invert=False):
+    """Rows of ASCII art, right-stripped, each at most `cols` wide.
+
+    The bottom `fade` fraction of rows dissolves into noise so the shoulders
+    melt away instead of ending in a hard edge. `invert` maps dark pixels to dense
+    glyphs, for drawing dark ink on a light background.
+    """
     img = Image.open(path).convert("RGB")
     mask = subject_mask(img)
     w, h = img.size
@@ -53,20 +64,26 @@ def portrait_ascii(path, cols=100, crop=(0.06, 0.0, 0.94, 0.84), ramp=RAMP):
     w, h = img.size
 
     gray = ImageOps.autocontrast(ImageOps.grayscale(img), cutoff=1)
+    gray = gray.filter(ImageFilter.UnsharpMask(radius=2, percent=sharpen, threshold=2))
     gray = ImageEnhance.Contrast(gray).enhance(1.25)
+    if invert:
+        gray = ImageOps.invert(gray)
 
     rows = int(cols * (h / w) * ADVANCE)
     gray = gray.resize((cols, rows), Image.LANCZOS)
     mask = mask.resize((cols, rows), Image.LANCZOS)
 
     top = len(ramp) - 2
+    fade_from = int(rows * (1 - fade))
     lines = []
     for y in range(rows):
+        keep = 1.0 if y < fade_from else 1 - (y - fade_from + 1) / (rows - fade_from + 1)
         line = []
         for x in range(cols):
-            if mask.getpixel((x, y)) < 128:
+            if mask.getpixel((x, y)) < 128 or _noise(x, y) >= keep:
                 line.append(" ")
             else:
-                line.append(ramp[1 + int(gray.getpixel((x, y)) / 255 * top)])
+                v = (gray.getpixel((x, y)) / 255) ** gamma
+                line.append(ramp[1 + int(v * top)])
         lines.append("".join(line).rstrip())
     return lines
