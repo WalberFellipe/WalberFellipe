@@ -84,6 +84,20 @@ class RenderTest(unittest.TestCase):
         self.assertEqual(build_svg(full_card(), DARK).count('class="hm"'), 371)
         self.assertEqual(build_svg(empty_card(), DARK).count('class="hm"'), 0)
 
+    def test_activity_header_shows_last_year_total(self):
+        # like GitHub: contributions of the last 365 days, today included
+        c = full_card()
+        today = c.now.date()
+        c.calendar = [(today - datetime.timedelta(i), 3) for i in reversed(range(400))]
+        svg = build_svg(c, DARK)
+        self.assertRegex(svg, r">1,095<.*?contributions in the last year")
+        self.assertNotIn("CONTRIBUTION MATRIX · 1 YEAR", svg)
+
+    def test_activity_header_without_calendar_has_no_total(self):
+        svg = build_svg(empty_card(), DARK)
+        self.assertIn("CONTRIBUTION MATRIX · 1 YEAR", svg)
+        self.assertNotIn("contributions in the last year", svg)
+
     def test_wakatime_drives_languages_and_code_time(self):
         c = full_card()
         c.wakatime = {"range": "ALL TIME", "langs": [("TypeScript", "812h05m")],

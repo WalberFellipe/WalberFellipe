@@ -254,8 +254,17 @@ def _heat_levels(counts):
 
 def _activity(card, p, y):
     x, w, h = 12, W - 24, ACTIVITY_H
-    out = [_panel(x, y, w, h, "GIT.ACTIVITY", p),
-           _t(30, y + 38, "CONTRIBUTION MATRIX · 1 YEAR", "mono h")]
+    out = [_panel(x, y, w, h, "GIT.ACTIVITY", p)]
+    if card.calendar:
+        # same window as GitHub's "N contributions in the last year": 365 days up to today
+        since = card.now.date() - datetime.timedelta(days=365)
+        total = sum(n for d, n in card.calendar if d > since)
+        out.append(f'<text x="30" y="{y + 38}" class="mono" xml:space="preserve">'
+                   f'<tspan class="h">CONTRIBUTION MATRIX · </tspan>'
+                   f'<tspan class="v b sm">{fmt_num(total)}</tspan>'
+                   f'<tspan class="m sm"> contributions in the last year</tspan></text>')
+    else:
+        out.append(_t(30, y + 38, "CONTRIBUTION MATRIX · 1 YEAR", "mono h"))
     gx, gy = 30, y + 48
     begin = _cards_begin(card) + 0.15
     if card.calendar:

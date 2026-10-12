@@ -111,6 +111,26 @@ class FetcherTest(unittest.TestCase):
         self.assertIn("calendar", err.getvalue())
         self.assertIn("HTTP 401", err.getvalue())
 
+    def test_wakatime_parses_hours_and_skips_other(self):
+        stats = {"data": {"languages": [
+            {"name": "TypeScript", "hours": 812, "minutes": 5},
+            {"name": "Other", "hours": 99, "minutes": 0},
+            {"name": "Python", "hours": 40, "minutes": 30}],
+            "human_readable_total": "1,203 hrs 4 mins", "human_readable_daily_average": "2 hrs 1 min"}}
+        with mock.patch("profilecard.data._get_json", return_value=stats):
+            w = fetch_wakatime("k")
+        self.assertEqual(w["range"], "ALL TIME")
+        self.assertEqual(w["langs"], [("TypeScript", "812h05m"), ("Python", "40h30m")])
+        self.assertEqual(w["total"], "1,203 hrs 4 mins")
+
+    def test_wakatime_malformed_payloads_are_none(self):
+        # an odd API answer must never crash the build
+        for payload in ({"data": None}, {"data": {"languages": None}},
+                        {"data": {"languages": [{"name": "Go", "hours": None, "minutes": None}]}}):
+            with self.subTest(payload=payload), \
+                    mock.patch("profilecard.data._get_json", return_value=payload):
+                self.assertIsNone(fetch_wakatime("k"))
+
     def test_top_repos_skip_profile_repo(self):
         repos = [{"name": n, "full_name": f"u/{n}", "fork": False, "stargazers_count": 0,
                   "forks_count": 0, "language": None, "pushed_at": p}

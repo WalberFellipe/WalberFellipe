@@ -207,16 +207,16 @@ def fetch_wakatime(key):
         return None
     auth = "Basic " + base64.b64encode(key.encode()).decode()
     for rng, label in _WAKATIME_RANGES:
-        try:
+        try:  # parsing stays inside: an odd payload just moves on to the next range
             stats = _get_json(f"https://wakatime.com/api/v1/users/current/stats/{rng}",
                               None, auth_header=auth)["data"]
-        except Exception:
-            continue
-        langs = [(l["name"], f"{int(l.get('hours', 0))}h{int(l.get('minutes', 0)):02d}m")
-                 for l in stats.get("languages", []) if l["name"].lower() != "other"][:5]
-        if not langs:
-            continue
-        return {"range": label, "langs": langs,
-                "total": stats.get("human_readable_total", ""),
-                "daily_avg": stats.get("human_readable_daily_average", "")}
+            langs = [(l["name"], f"{int(l['hours'])}h{int(l['minutes']):02d}m")
+                     for l in stats["languages"] if l["name"].lower() != "other"][:5]
+            if not langs:
+                continue
+            return {"range": label, "langs": langs,
+                    "total": stats.get("human_readable_total", ""),
+                    "daily_avg": stats.get("human_readable_daily_average", "")}
+        except Exception as exc:
+            _warn(f"wakatime {rng}", exc)
     return None
