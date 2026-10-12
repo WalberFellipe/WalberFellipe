@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# local tooling (preview config, agent scratch space)
+.claude/
+.superpowers/
+
+# editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
