@@ -6,30 +6,9 @@ import xml.etree.ElementTree as ET
 import tests._path  # noqa: F401
 
 from profilecard.palettes import DARK, LIGHT
+from build_profile import INFO
 from profilecard.render import INFO_PANEL, VALUE_COL, Card, build_svg
 
-INFO = [
-    ("Subject", "Walber Fellipe"),
-    ("Role", "Full-stack Developer / AI Engineer"),
-    ("Origin", "Araxá - MG, Brazil"),
-    ("Status", "Building • Learning • Shipping"),
-    ("Currently", "Diagonal Social · Studying AI Engineering"),
-    ("ToolChain", "VS Code, IntelliJ, Git, Docker"),
-    ("Core Lang", "TypeScript, Python, PHP, Kotlin"),
-    ("Core Frontend", "React, Next"),
-    ("Core Backend", "Node.js, Nest, Express, Fastify, FastAPI"),
-    ("Core Mobile", "React Native, Flutter"),
-    ("Core Database", "PostgreSQL, MongoDB, SQLite, Redis"),
-    ("Core ORM/BaaS", "Prisma, Drizzle, Supabase, Firebase"),
-    ("Core Cloud", "AWS (S3, Cognito), Google Cloud, BigQuery"),
-    ("Core AI", "LLM, RAG, MCP, TensorFlow.js"),
-    ("Integrations", "Stripe, Pusher, Magento"),
-    ("— Contact", ""),
-    ("Mail", "walberfellipe18@gmail.com"),
-    ("Portfolio", "walberfellipe.com.br"),
-    ("LinkedIn", "walber-fellipe"),
-    ("Github", "WalberFellipe"),
-]
 
 NOW = datetime.datetime(2026, 10, 11, 12, tzinfo=datetime.timezone.utc)
 
@@ -105,6 +84,22 @@ class RenderTest(unittest.TestCase):
         self.assertIn("812h05m", svg)
         self.assertIn("CODE TIME", svg)
         self.assertNotIn("CODE TIME", build_svg(full_card(), DARK))
+
+    def test_gradient_cycles_every_9s(self):
+        svg = build_svg(full_card(), DARK)
+        self.assertRegex(svg, r'attributeName="stop-color"[^>]*dur="9s"')
+
+    def test_info_lines_type_in_order(self):
+        svg = build_svg(full_card(), DARK)
+        begins = [float(b) for b in re.findall(r'id="lc\d+".*?begin="([\d.]+)s"', svg, re.S)]
+        self.assertEqual(len(begins), len(full_card().info))
+        self.assertEqual(begins, sorted(begins))
+        self.assertGreaterEqual(begins[0], 2.2)
+
+    def test_glitch_filter_present(self):
+        svg = build_svg(full_card(), DARK)
+        self.assertIn('id="glitch"', svg)
+        self.assertIn('dur="7s"', svg)
 
 
 if __name__ == "__main__":
