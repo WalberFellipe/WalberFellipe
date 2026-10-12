@@ -75,12 +75,16 @@ three hues per theme. Scanline blend is `screen` on dark, `multiply` on light.
   | Origin        | Araxá - MG, Brazil |
   | Status        | Building • Learning • Shipping |
   | Currently     | Diagonal Social · Studying AI Engineering |
-  | ToolChain     | VS Code, Git, Docker |
-  | Core Lang     | TypeScript, Python, PHP |
+  | ToolChain     | VS Code, IntelliJ, Git, Docker |
+  | Core Lang     | TypeScript, Python, PHP, Kotlin |
   | Core Frontend | React, Next |
-  | Core Backend  | Node.js, Nest, FastAPI |
+  | Core Backend  | Node.js, Nest, Express, Fastify, FastAPI |
   | Core Mobile   | React Native, Flutter |
-  | Core Database | PostgreSQL, MongoDB |
+  | Core Database | PostgreSQL, MongoDB, SQLite, Redis |
+  | Core ORM/BaaS | Prisma, Drizzle, Supabase, Firebase |
+  | Core Cloud    | AWS (S3, Cognito), Google Cloud, BigQuery |
+  | Core AI       | LLM, RAG, MCP, TensorFlow.js |
+  | Integrations  | Stripe, Pusher, Magento |
   | — Contact —   | |
   | Mail          | walberfellipe18@gmail.com |
   | Portfolio     | walberfellipe.com.br |
