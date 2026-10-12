@@ -1,4 +1,6 @@
+import contextlib
 import datetime
+import io
 import unittest
 from unittest import mock
 
@@ -42,6 +44,12 @@ class MetricMathTest(unittest.TestCase):
 
 
 class FetcherTest(unittest.TestCase):
+    def setUp(self):
+        # fetchers warn on stderr when they swallow a failure; keep test output clean
+        quiet = contextlib.redirect_stderr(io.StringIO())
+        quiet.__enter__()
+        self.addCleanup(quiet.__exit__, None, None, None)
+
     def test_calendar_without_token_is_none(self):
         self.assertIsNone(fetch_calendar("WalberFellipe", None, 2019, D(2026, 10, 11)))
 
@@ -72,6 +80,36 @@ class FetcherTest(unittest.TestCase):
         self.assertEqual((g["stars"], g["forks"], g["followers"]), (2, 1, 10))
         self.assertIsNone(g["prs"])
         self.assertEqual(g["langs"], [("TypeScript", 75), ("Python", 25)])
+
+    def test_private_repos_count_but_are_never_named(self):
+        # GH_PAT mode sees private repos: they feed the totals, never the public top list
+        repos = [{"name": "secret-client-app", "full_name": "u/secret-client-app", "fork": False,
+                  "private": True, "stargazers_count": 5, "forks_count": 0, "language": "PHP",
+                  "pushed_at": "2026-10-11T00:00:00Z"},
+                 {"name": "open", "full_name": "u/open", "fork": False, "private": False,
+                  "stargazers_count": 1, "forks_count": 0, "language": "TypeScript",
+                  "pushed_at": "2026-10-01T00:00:00Z"}]
+
+        def fake(url, token, body=None):
+            if url.endswith("/users/u"):
+                return {"followers": 1, "following": 1, "public_repos": 1, "created_at": ""}
+            if "/repos?" in url:
+                return repos
+            raise OSError
+
+        with mock.patch("profilecard.data._get_json", side_effect=fake):
+            g = fetch_github("u", "pat", private=True)
+        self.assertEqual([r[0] for r in g["top_repos"]], ["open"])
+        self.assertEqual(g["stars"], 6)
+
+    def test_swallowed_failures_are_logged(self):
+        err = io.StringIO()
+        with mock.patch("profilecard.data._get_json", side_effect=OSError("HTTP 401")), \
+                contextlib.redirect_stderr(err):
+            fetch_calendar("u", "t", 2019, D(2026, 10, 11))
+            fetch_github("u", "t", private=False)
+        self.assertIn("calendar", err.getvalue())
+        self.assertIn("HTTP 401", err.getvalue())
 
     def test_top_repos_skip_profile_repo(self):
         repos = [{"name": n, "full_name": f"u/{n}", "fork": False, "stargazers_count": 0,

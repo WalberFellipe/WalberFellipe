@@ -7,9 +7,15 @@ import base64
 import collections
 import datetime
 import json
+import sys
 import urllib.request
 
 API = "https://api.github.com"
+
+
+def _warn(what, exc):
+    # swallowed failures still leave a trace in the CI log
+    print(f"warning: {what} unavailable: {exc!r}", file=sys.stderr)
 
 
 def _get_json(url, token, body=None, auth_header=None):
@@ -99,6 +105,7 @@ def fetch_calendar(user, token, since_year, today):
             res = _get_json(f"{API}/graphql", token,
                             body={"query": _CALENDAR_QUERY, "variables": variables})
             if res.get("errors"):
+                _warn("calendar", res["errors"])
                 return None
             weeks = (res["data"]["user"]["contributionsCollection"]
                      ["contributionCalendar"]["weeks"])
@@ -106,21 +113,24 @@ def fetch_calendar(user, token, since_year, today):
                 for d in week["contributionDays"]:
                     counts[datetime.date.fromisoformat(d["date"])] = d["contributionCount"]
         return sorted(counts.items())
-    except Exception:
+    except Exception as exc:
+        _warn("calendar", exc)
         return None
 
 
-def _try(fn, default=None):
+def _try(what, fn, default=None):
     try:
         return fn()
-    except Exception:
+    except Exception as exc:
+        _warn(what, exc)
         return default
 
 
 def fetch_github(user, token, private):
     try:
         prof = _get_json(f"{API}/users/{user}", token)
-    except Exception:
+    except Exception as exc:
+        _warn("github profile", exc)
         return None
 
     repos = []
@@ -135,7 +145,8 @@ def fetch_github(user, token, private):
             if len(batch) < 100:
                 break
         own = [r for r in repos if not r.get("fork")]
-    except Exception:
+    except Exception as exc:
+        _warn("github repos", exc)
         own = None
 
     stars = forks = top_repos = last_push = None
@@ -143,7 +154,8 @@ def fetch_github(user, token, private):
     if own is not None:
         stars = sum(r.get("stargazers_count", 0) for r in own)
         forks = sum(r.get("forks_count", 0) for r in own)
-        showcase = [r for r in own if r["name"].lower() != user.lower()]  # not the profile repo
+        # the card is public: private repos count in the totals but are never named
+        showcase = [r for r in own if not r.get("private") and r["name"].lower() != user.lower()]
         ranked = sorted(showcase, key=lambda r: (r.get("stargazers_count", 0), r.get("pushed_at") or ""),
                         reverse=True)
         top_repos = [(r["name"][:17], r.get("stargazers_count", 0), r.get("language") or "")
@@ -155,7 +167,7 @@ def fetch_github(user, token, private):
         if token:  # by code bytes, capped to the most recently pushed repos
             recent = sorted(own, key=lambda r: r.get("pushed_at") or "", reverse=True)[:80]
             for r in recent:
-                got = _try(lambda: _get_json(f"{API}/repos/{r['full_name']}/languages", token))
+                got = _try("repo languages", lambda: _get_json(f"{API}/repos/{r['full_name']}/languages", token))
                 if got:
                     by.update(got)
                 elif r.get("language"):
@@ -177,8 +189,8 @@ def fetch_github(user, token, private):
         "repos": len(own) if private and own is not None else prof.get("public_repos"),
         "stars": stars,
         "forks": forks,
-        "prs": _try(lambda: search_count("pr")),
-        "issues": _try(lambda: search_count("issue")),
+        "prs": _try("pr count", lambda: search_count("pr")),
+        "issues": _try("issue count", lambda: search_count("issue")),
         "langs": langs,
         "top_repos": top_repos,
         "last_push": last_push,

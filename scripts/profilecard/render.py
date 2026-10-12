@@ -35,16 +35,26 @@ def _cards_begin(card):
     return _line_begin(len(card.info)) + 0.3
 
 
+def _intro(attr, start, end, begin, dur, ease=None, tag="animate", extra=""):
+    """An intro that runs from document start, holding `start` until `begin`.
+
+    The element's own attributes keep the finished state, so anything that shows the
+    SVG without playing SMIL (animation disabled, static renderers) sees the full card.
+    """
+    total = begin + dur
+    spline = f' calcMode="spline" keySplines="0 0 1 1;{ease}"' if ease else ""
+    return (f'<{tag} attributeName="{attr}"{extra} values="{start};{start};{end}" '
+            f'keyTimes="0;{begin / total:.4f};1" dur="{total:.2f}s" begin="0s" fill="freeze"{spline}/>')
+
+
 def _slide_in(gid, body, begin):
-    return (f'<g id="{gid}" opacity="0">{_fade_in(begin)}'
-            f'<animateTransform attributeName="transform" type="translate" from="0 16" to="0 0" '
-            f'dur="0.7s" begin="{begin:.2f}s" fill="freeze" calcMode="spline" keyTimes="0;1" '
-            f'keySplines="0.2 0.8 0.2 1"/>{body}</g>')
+    slide = _intro("transform", "0 16", "0 0", begin, 0.7, ease="0.2 0.8 0.2 1",
+                   tag="animateTransform", extra=' type="translate"')
+    return f'<g id="{gid}">{_fade_in(begin)}{slide}{body}</g>'
 
 
 def _fade_in(begin, dur=0.7):
-    return (f'<animate attributeName="opacity" from="0" to="1" dur="{dur}s" '
-            f'begin="{begin:.2f}s" fill="freeze"/>')
+    return _intro("opacity", 0, 1, begin, dur)
 
 
 @dataclasses.dataclass
@@ -104,9 +114,8 @@ def _visual_map(card, p):
     spans = [f'<tspan x="{x0:.1f}" y="{y0 + i * FS_ASCII:.1f}">{escape(r)}</tspan>'
              for i, r in enumerate(rows) if r.strip()]
     out.append(
-        f'<clipPath id="reveal"><rect x="{x}" y="{y}" width="{w}" height="0">'
-        f'<animate attributeName="height" from="0" to="{h}" dur="2.4s" begin="{BOOT_END:.2f}s" '
-        f'fill="freeze" calcMode="spline" keyTimes="0;1" keySplines="0.25 0.1 0.25 1"/></rect></clipPath>'
+        f'<clipPath id="reveal"><rect x="{x}" y="{y}" width="{w}" height="{h}">'
+        f'{_intro("height", 0, h, BOOT_END, 2.4, ease="0.25 0.1 0.25 1")}</rect></clipPath>'
         f'<g id="portrait" clip-path="url(#reveal)"><g filter="url(#glitch)">'
         f'<text class="ascii" xml:space="preserve">{"".join(spans)}'
         f'<animate attributeName="opacity" values="0.88;1;0.93;1;0.9" dur="3.8s" '
@@ -133,9 +142,8 @@ def _info_rows(card, p):
                    f'<tspan class="m">{escape(prefix[len(key):])}</tspan>'
                    f'<tspan class="v">{escape(value)}</tspan></text>')
         # typing effect: a clip rect sweeps open left to right
-        clip = (f'<clipPath id="lc{i}"><rect x="{tx - 2}" y="{ly - 14}" width="0" height="{INFO_LH + 2}">'
-                f'<animate attributeName="width" from="0" to="{w - 28}" dur="{TYPE_DUR}s" '
-                f'begin="{_line_begin(i):.2f}s" fill="freeze"/></rect></clipPath>')
+        clip = (f'<clipPath id="lc{i}"><rect x="{tx - 2}" y="{ly - 14}" width="{w - 28}" height="{INFO_LH + 2}">'
+                f'{_intro("width", 0, w - 28, _line_begin(i), TYPE_DUR)}</rect></clipPath>')
         rows.append((ly, f'{clip}<g clip-path="url(#lc{i})">{svg}</g>'))
     return rows
 
@@ -145,7 +153,8 @@ def _boot_log(p):
     out = []
     for j, line in enumerate(BOOT_LINES):
         b = 0.95 + j * 0.35
-        out.append(f'<text x="{x + 16}" y="{y + 62 + j * INFO_LH}" class="mono k info" opacity="0">'
+        # boot lines exist only during the intro, so their resting state is hidden
+        out.append(f'<text x="{x + 16}" y="{y + 62 + j * INFO_LH}" class="mono k info boot" opacity="0">'
                    f'{escape(line)}'
                    f'<animate attributeName="opacity" from="0" to="1" dur="0.18s" begin="{b:.2f}s" fill="freeze"/>'
                    f'<animate attributeName="opacity" from="1" to="0" dur="0.3s" begin="{BOOT_END - 0.3:.2f}s" '
@@ -165,7 +174,7 @@ def _system_info(card, p):
             f'x2="{x + w - 16}" y2="{y + 34}" stroke="{p["border"]}"/>')
     rows = _info_rows(card, p)
     cy = y + 62 + len(rows) * INFO_LH
-    cursor = (f'<g opacity="0">{_fade_in(_line_begin(len(rows)), 0.2)}'
+    cursor = (f'<g>{_fade_in(_line_begin(len(rows)), 0.2)}'
               + _t(tx, cy, ">", "mono k info")
               + f'<rect id="cursor" x="{tx + 14}" y="{cy - 11}" width="8" height="13" fill="{p["label"]}">'
                 f'<animate attributeName="opacity" values="1;1;0;0" keyTimes="0;0.5;0.5;1" dur="1.05s" '
@@ -221,8 +230,7 @@ def _metrics(card, p, y):
         bw = max(2, round(110 * wt / top)) if top else 2
         out.append(_t(lx, ly, name[:12], "mono v sm"))
         out.append(f'<rect class="bar" x="{lx + 100}" y="{ly - 8}" width="{bw}" height="8" rx="2" '
-                   f'fill="url(#asciiGrad)"><animate attributeName="width" from="0" to="{bw}" dur="0.6s" '
-                   f'begin="{begin + 0.4 + i * 0.1:.2f}s" fill="freeze"/></rect>')
+                   f'fill="url(#asciiGrad)">{_intro("width", 0, bw, begin + 0.4 + i * 0.1, 0.6)}</rect>')
         out.append(_t(lx + 220, ly, label, "mono m sm"))
     if not langs:
         out.append(_t(lx, y + 58, "—", "mono m sm"))
@@ -255,7 +263,7 @@ def _activity(card, p, y):
         step = CELL + CELL_GAP
         for i, ((_, c), lvl) in enumerate(zip(days, _heat_levels([c for _, c in days]))):
             out.append(f'<rect class="hm" x="{gx + (i // 7) * step}" y="{gy + (i % 7) * step}" '
-                       f'width="{CELL}" height="{CELL}" rx="2" fill="{p[f"heat{lvl}"]}" opacity="0">'
+                       f'width="{CELL}" height="{CELL}" rx="2" fill="{p[f"heat{lvl}"]}">'
                        f'{_fade_in(begin + 0.3 + (i // 7) * 0.012, 0.28)}</rect>')
         ly = gy + 7 * step + 12
         out.append(_t(gx, ly, "less", "mono m lbl2"))
@@ -341,12 +349,14 @@ def _crt(canvas_h, p):
     """Power-on: a bright line strikes across the middle, then two shutters retract."""
     half = canvas_h / 2
     spline = 'calcMode="spline" keyTimes="0;1" keySplines="0.5 0 0.7 1"'
+    # shutters exist only while the intro plays; without SMIL they stay hidden
+    shown = '<set attributeName="visibility" to="visible" begin="0s" dur="0.95s"/>'
     return (
         f'<g id="crt">'
-        f'<rect x="0" y="0" width="{W}" height="{half}" fill="{p["bg0"]}">'
+        f'<rect x="0" y="0" width="{W}" height="{half}" fill="{p["bg0"]}" visibility="hidden">{shown}'
         f'<animateTransform attributeName="transform" type="translate" from="0 0" to="0 {-half}" '
         f'dur="0.5s" begin="0.42s" fill="freeze" {spline}/></rect>'
-        f'<rect x="0" y="{half}" width="{W}" height="{half}" fill="{p["bg0"]}">'
+        f'<rect x="0" y="{half}" width="{W}" height="{half}" fill="{p["bg0"]}" visibility="hidden">{shown}'
         f'<animateTransform attributeName="transform" type="translate" from="0 0" to="0 {half}" '
         f'dur="0.5s" begin="0.42s" fill="freeze" {spline}/></rect>'
         f'<rect x="{W / 2}" y="{half - 1}" width="0" height="2" fill="{p["g1"]}" opacity="0">'

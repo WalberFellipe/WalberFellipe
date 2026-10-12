@@ -43,7 +43,11 @@ docs/superpowers/specs/…          this spec
    output.
 4. **Mapping** — resize to `COLS` × rows (rows derived from the monospace cell
    ratio so the face is not stretched); background cells → space; subject cells →
-   ramp index ≥ 1 so the silhouette (hair, shirt) never disappears.
+   ramp index ≥ 1 so the silhouette (hair, shirt) never disappears — except in the
+   bottom 25% of rows, which dissolve into deterministic noise so the shoulders fade
+   out instead of ending in a hard edge.
+   The light theme inverts the tones (dark pixels → dense glyphs) so the portrait
+   reads as ink on paper rather than a photo negative.
 5. **Color** — the ASCII `<text>` is filled with a linear gradient whose stops
    animate through the palette on a 9s loop.
 

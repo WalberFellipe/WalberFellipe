@@ -10,6 +10,7 @@ Requires: Pillow  ->  py -m pip install pillow
 import dataclasses
 import datetime
 import os
+import sys
 
 from profilecard.data import (compute_streaks, fetch_calendar, fetch_github, fetch_wakatime,
                               uptime_days)
@@ -57,13 +58,19 @@ def main(out_dir=ROOT, today=None):
     token = pat or os.environ.get("GITHUB_TOKEN")
 
     calendar = fetch_calendar(USER, token, JOINED_YEAR, today)
+    github = fetch_github(USER, token, private=bool(pat))
+    if token and calendar is None and github is None:
+        # a token that gets nothing back is expired/revoked or GitHub is down:
+        # keep the last good card and fail the run instead of publishing an all-dash one
+        sys.exit("error: GitHub API returned nothing with the configured token; card left unchanged")
+
     card = Card(
         info=INFO,
         user=HANDLE,
         uptime_days=uptime_days(CODING_SINCE, today),
         ascii_rows=[],
         streaks=compute_streaks(calendar, today) if calendar else None,
-        github=fetch_github(USER, token, private=bool(pat)),
+        github=github,
         wakatime=fetch_wakatime(os.environ.get("WAKATIME_API_KEY")),
         calendar=calendar,
         sync_date=today.isoformat(),

@@ -98,11 +98,30 @@ class RenderTest(unittest.TestCase):
         self.assertRegex(svg, r'attributeName="stop-color"[^>]*dur="9s"')
 
     def test_info_lines_type_in_order(self):
+        # intros start with the document; the visible start is keyTimes[1] * dur
         svg = build_svg(full_card(), DARK)
-        begins = [float(b) for b in re.findall(r'id="lc\d+".*?begin="([\d.]+)s"', svg, re.S)]
+        found = re.findall(r'id="lc\d+".*?keyTimes="0;([\d.]+);1" dur="([\d.]+)s"', svg, re.S)
+        begins = [round(float(k) * float(d), 2) for k, d in found]
         self.assertEqual(len(begins), len(full_card().info))
         self.assertEqual(begins, sorted(begins))
         self.assertGreaterEqual(begins[0], 2.2)
+
+    def test_static_frame_is_finished_card(self):
+        # with animation disabled or unsupported, the document itself must be the final card
+        ns = "{http://www.w3.org/2000/svg}"
+        root = ET.fromstring(build_svg(full_card(), DARK).encode("utf-8"))
+        crt = root.find(f".//{ns}g[@id='crt']")
+        intro_only = {id(e) for e in crt.iter()}
+        for el in root.iter():
+            if id(el) in intro_only or "boot" in (el.get("class") or ""):
+                continue
+            self.assertNotEqual(el.get("opacity"), "0", f"{el.tag} {el.attrib}")
+        for clip in root.iter(f"{ns}clipPath"):
+            for r in clip.iter(f"{ns}rect"):
+                self.assertNotIn("0", (r.get("width"), r.get("height")), clip.get("id"))
+        shutters = [r for r in crt.findall(f"{ns}rect") if r.get("fill") == DARK["bg0"]]
+        self.assertEqual(len(shutters), 2)
+        self.assertTrue(all(r.get("visibility") == "hidden" for r in shutters))
 
     def test_glitch_filter_present(self):
         svg = build_svg(full_card(), DARK)
